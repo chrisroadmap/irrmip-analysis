@@ -19,6 +19,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as pl
 from scipy.signal import savgol_filter
+from scipy.stats import t as tdist
 
 # %%
 os.makedirs('../plots/', exist_ok=True)
@@ -88,17 +89,32 @@ colors = {
 }
 
 # %%
+pl.figure(figsize=(15/2.54,7.5/2.54))
 for model in runids:
     for runid in runids[model]:
-        pl.plot(erf[model][runid], color=colors[model])
+        pl.plot(erf[model][runid], color=colors[model], label=model if runid=='01' else '')
+pl.legend(loc='upper center')
+pl.axhline(0, ls=':', color='k')
+pl.xlim(1900, 2015)
+pl.ylabel('W m$^{-2}$')
+pl.title('Effective radiative forcing from irrigation')
+pl.tight_layout()
+pl.savefig('../plots/erf_irrigation_raw.png')
 
 # %% [markdown]
 # ## remove obvious outliers (found by looking at CSV)
 
 # %%
+pl.figure(figsize=(15/2.54,7.5/2.54))
 for runid in runids['CESM2-ground']:
     pl.plot(erf['CESM2-ground'][runid], label=runid)
 pl.legend()
+pl.axhline(0, ls=':', color='k')
+pl.xlim(1900, 2015)
+pl.ylabel('W m$^{-2}$')
+pl.title('Effective radiative forcing from irrigation, CESM2-ground')
+pl.tight_layout()
+pl.savefig('../plots/erf_irrigation_CESM2-ground.png')
 
 # %%
 # 1914 is probably fine, since 1913 is OK we'll leave 1914 in
@@ -108,17 +124,32 @@ erf['CESM2-ground']['01'].loc[1901:1920]
 erf['CESM2-ground']['01'].loc[1901:1912] = np.nan
 
 # %%
+pl.figure(figsize=(15/2.54,7.5/2.54))
 for runid in runids['E3SM']:
     pl.plot(erf['E3SM'][runid], label=runid)
-pl.legend()
+pl.legend(loc='upper left')
+pl.axhline(0, ls=':', color='k')
+pl.xlim(1900, 2015)
+pl.ylabel('W m$^{-2}$')
+pl.title('Effective radiative forcing from irrigation, E3SM')
+pl.tight_layout()
+pl.savefig('../plots/erf_irrigation_E3SM.png')
 
 # %%
 erf['E3SM']['01'].loc[2014] = np.nan
 
 # %%
+pl.figure(figsize=(15/2.54,7.5/2.54))
 for model in runids:
     for runid in runids[model]:
-        pl.plot(erf[model][runid], color=colors[model])
+        pl.plot(erf[model][runid], color=colors[model], label=model if runid=='01' else '')
+pl.legend(ncol=5, fontsize=7, loc='lower center', frameon=False)
+pl.axhline(0, ls=':', color='k')
+pl.xlim(1900, 2015)
+pl.ylabel('W m$^{-2}$')
+pl.title('Effective radiative forcing from irrigation')
+pl.tight_layout()
+pl.savefig('../plots/erf_irrigation_outliers_removed.png')
 
 # %%
 # find the ensemble mean
@@ -129,29 +160,64 @@ for model in runids:
     erf[model]['mean'] = df_mean.mean(axis=1)
 
 # %%
+pl.figure(figsize=(15/2.54,7.5/2.54))
 for model in runids:
-    pl.plot(erf[model]['mean'], color=colors[model])
+    for runid in runids[model]:
+        pl.plot(erf[model][runid], color=colors[model], lw=0.1)
+    pl.plot(erf[model]['mean'], color=colors[model], label=model)
+pl.legend(ncol=5, fontsize=7, loc='lower center', frameon=False)
+pl.axhline(0, ls=':', color='k')
+pl.xlim(1900, 2015)
+pl.ylabel('W m$^{-2}$')
+pl.title('Effective radiative forcing from irrigation')
+pl.tight_layout()
+pl.savefig('../plots/erf_irrigation_outliers_removed_with_model_means.png')
 
 # %%
 # create an 11-year smoothing filter
+pl.figure(figsize=(15/2.54,7.5/2.54))
 for model in models:
     pl.plot(
-        erf[model]['mean'].index,
-        savgol_filter(np.concatenate((np.zeros(10), erf[model]['mean'], erf[model]['mean'].values[-1]*np.ones(10))), 11, 1)[10:-10],
-        color=colors[model]
+        erf[model]['mean'].index[5:-5],
+        savgol_filter(erf[model]['mean'], 11, 1)[5:-5],
+        color=colors[model],
+        label=model
     )
+pl.legend(ncol=5, fontsize=7, loc='lower center', frameon=False)
+pl.axhline(0, ls=':', color='k')
+pl.xlim(1900, 2015)
+pl.ylabel('W m$^{-2}$')
+pl.title('Effective radiative forcing from irrigation (11-year smoothed)')
+pl.tight_layout()
+pl.savefig('../plots/erf_irrigation_outliers_removed_11yr_smoothed.png')
 
 # %%
 # create a 21-year smoothing filter
+pl.figure(figsize=(15/2.54,7.5/2.54))
 for model in models:
     pl.plot(
-        erf[model]['mean'].index,
-        savgol_filter(np.concatenate((np.zeros(20), erf[model]['mean'], erf[model]['mean'].values[-1]*np.ones(20))), 21, 1)[20:-20],
-        color=colors[model]
+        erf[model]['mean'].index[10:-10],
+        savgol_filter(erf[model]['mean'], 21, 1)[10:-10],
+        color=colors[model],
+        label=model
     )
+pl.legend(ncol=5, fontsize=7, loc='lower center', frameon=False)
+pl.axhline(0, ls=':', color='k')
+pl.xlim(1900, 2015)
+pl.ylabel('W m$^{-2}$')
+pl.title('Effective radiative forcing from irrigation (21-year smoothed)')
+pl.tight_layout()
+pl.savefig('../plots/erf_irrigation_outliers_removed_21yr_smoothed.png')
 
 # %%
-for model in runids:
-    print(model, erf[model]['mean'].mean(), erf[model]['mean'].std())
+popmean = np.ones(len(runids)) * np.nan
+popstd = np.ones(len(runids)) * np.nan
+for imod, model in enumerate(runids):
+    popmean[imod] = erf[model]['mean'].mean()
+    popstd[imod] = erf[model]['mean'].std()
+    print(model, popmean[imod], popstd[imod], tdist.ppf(0.975, len(erf[model]['mean']))*popstd[imod]/np.sqrt(len(erf[model]['mean'])))
+print('MMM:', np.mean(popmean))
+print('MMStd:', np.sqrt(np.sum(popstd**2)))
 
 # %%
+tdist.ppf(0.975, len(erf[model]['mean']))
